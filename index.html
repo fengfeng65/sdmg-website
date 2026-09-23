@@ -2,8 +2,10 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#070a12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Tetris</title>
 <style>
   :root{
@@ -13,6 +15,8 @@
     --txt:#dbe6ff;
     --dim:#7d8fb3;
     --accent:#22d3ee;
+    --btn:#16202f;
+    --btn-bd:#24344d;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -22,14 +26,30 @@
     color:var(--txt);
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
     display:flex;align-items:center;justify-content:center;
-    min-height:100vh;padding:14px;
+    min-height:100vh;min-height:100dvh;
+    padding:12px;
     -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
+    -webkit-tap-highlight-color:transparent;
     overscroll-behavior:none;
     touch-action:manipulation;
   }
-  .game{display:flex;gap:14px;align-items:flex-start}
 
-  .col{display:flex;flex-direction:column;gap:10px;width:96px}
+  /* ---------------- 布局 ---------------- */
+  .game{
+    display:grid;
+    grid-template-columns:96px auto 96px;
+    grid-template-rows:auto auto;
+    grid-template-areas:
+      "hold  main next"
+      "stats main next";
+    gap:12px;
+    align-items:start;
+  }
+  .hold-panel {grid-area:hold}
+  .stats-panel{grid-area:stats}
+  .next-panel {grid-area:next}
+  .wrap-col   {grid-area:main;display:flex;flex-direction:column;align-items:center;gap:12px}
 
   .panel{
     background:linear-gradient(180deg,#111a2c,#0c1320);
@@ -40,15 +60,14 @@
   }
   .panel h3{
     margin:0 0 7px;font-size:10px;letter-spacing:.2em;
-    color:var(--dim);font-weight:600;
+    color:var(--dim);font-weight:600;text-align:center;
   }
   .stat{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0}
   .stat span:first-child{color:var(--dim);font-size:10px;letter-spacing:.1em}
-  .stat span:last-child{font-size:14px;font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums}
+  .stat span:last-child{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
 
-  canvas{display:block}
+  canvas{display:block;margin:0 auto}
   #hold,#next{background:#080d16;border-radius:8px}
-  .dim{opacity:.35}
 
   .board-wrap{position:relative;border-radius:12px;overflow:hidden;
     box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55),0 0 60px rgba(34,211,238,.07)}
@@ -57,58 +76,115 @@
   .overlay{
     position:absolute;inset:0;display:none;
     align-items:center;justify-content:center;
-    background:rgba(6,10,18,.82);
+    background:rgba(6,10,18,.85);
     backdrop-filter:blur(3px);
     text-align:center;padding:16px;
   }
   .overlay.show{display:flex}
-  .overlay-card{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .overlay-card{display:flex;flex-direction:column;gap:14px;align-items:center}
   .overlay h2{margin:0;font-size:20px;letter-spacing:.16em;color:var(--accent)}
-  .overlay p{margin:0;font-size:12px;color:var(--dim);line-height:1.7}
+  .overlay p{margin:0;font-size:12px;color:var(--dim);line-height:1.8}
   .overlay button{
-    appearance:none;border:1px solid #2a4a63;border-radius:9px;
+    appearance:none;border:1px solid #2a4a63;border-radius:12px;
     background:linear-gradient(180deg,#12324a,#0d2233);
-    color:#bff3ff;font:inherit;font-size:12px;letter-spacing:.14em;
-    padding:10px 22px;cursor:pointer;touch-action:none;
+    color:#bff3ff;font:inherit;font-size:14px;letter-spacing:.14em;
+    padding:14px 34px;cursor:pointer;touch-action:none;
+    -webkit-tap-highlight-color:transparent;
   }
   .overlay button:active{transform:translateY(1px)}
 
-  .pad{display:none;gap:8px;margin-top:12px;width:100%}
-  .pad button{
-    flex:1;appearance:none;border:1px solid var(--line);border-radius:10px;
-    background:linear-gradient(180deg,#141d31,#0d1421);color:var(--txt);
-    font:inherit;font-size:16px;padding:14px 0;cursor:pointer;
-    touch-action:none;-webkit-tap-highlight-color:transparent;
-  }
-  .pad button:active{background:#1c2942}
+  /* ---------------- 触控板 ---------------- */
+  .pad{display:none;width:100%;gap:12px;touch-action:none}
+  .pad .cluster{display:grid;gap:10px;flex:1}
+  .pad .cluster.move{grid-template-columns:1fr 1fr}
+  .pad .cluster.act {grid-template-columns:1fr 1fr}
+  .pad .span2{grid-column:1 / -1}
 
+  .pad button{
+    appearance:none;
+    -webkit-appearance:none;
+    border:1px solid var(--btn-bd);
+    border-radius:14px;
+    background:linear-gradient(180deg,#182234,#111a29);
+    color:var(--txt);
+    font:inherit;font-size:24px;line-height:1;
+    height:66px;
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    cursor:pointer;touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+    -webkit-user-select:none;user-select:none;
+    transition:transform .05s linear, filter .05s linear;
+    padding:0;
+  }
+  .pad button .lbl{font-size:12px;letter-spacing:.12em;opacity:.85}
+  .pad button.on,
+  .pad button:active{
+    transform:scale(.965);
+    filter:brightness(1.55);
+  }
+  .pad button.down{background:linear-gradient(180deg,#17323f,#101f29);border-color:#245265}
+  .pad button.rot {background:linear-gradient(180deg,#1b2544,#131a2e);border-color:#2c3f6b;font-size:26px}
+  .pad button.drop{
+    background:linear-gradient(180deg,#12475a,#0b2c39);
+    border-color:#1e7a95;color:#a8f0ff;
+    font-size:18px;letter-spacing:.14em;
+  }
+
+  .hold-panel.tappable{cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent}
+  .hold-panel.tappable:active{filter:brightness(1.3)}
+  .hold-hint{display:none;font-size:9px;color:var(--dim);text-align:center;letter-spacing:.1em;margin-top:5px}
+
+  /* ---------------- 窄屏 ---------------- */
   @media (max-width:760px){
-    body{align-items:flex-start;padding:10px}
-    .game{flex-direction:column;align-items:center}
-    .col{flex-direction:row;width:auto;gap:10px;align-items:stretch}
-    .col .panel{flex:1;min-width:0}
-    #next{width:64px;height:220px}
-    #hold{width:64px;height:64px}
+    body{align-items:flex-start;padding:8px;padding-top:calc(8px + env(safe-area-inset-top));
+         padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+    .game{
+      width:100%;
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:
+        "hold  next"
+        "stats stats"
+        "main  main";
+      gap:8px;
+    }
+    .panel{padding:8px 9px}
+    .hold-panel h3,.next-panel h3{margin-bottom:5px}
+    .hold-hint{display:block}
+    .stats-panel{padding:6px 12px}
+    .stats-panel h3{display:none}
+    .stats-panel .stat-row{display:flex;gap:14px;justify-content:space-around}
+    .stats-panel .stat{padding:0;gap:8px}
+    .stats-panel .stat span:last-child{font-size:15px}
+    .wrap-col{gap:10px}
     .pad{display:flex}
-    .wrap-col{display:flex;flex-direction:column;align-items:center}
+    .overlay h2{font-size:17px}
+    .overlay p{font-size:11px;line-height:1.9}
+  }
+
+  @media (max-width:380px){
+    .pad button{height:60px;font-size:22px}
+    .pad button.drop{font-size:16px}
   }
 </style>
 </head>
 <body>
 
 <div class="game">
-  <div class="col left">
-    <div class="panel">
-      <h3>HOLD</h3>
-      <canvas id="hold"></canvas>
-    </div>
-    <div class="panel" style="flex:1">
-      <h3>STATS</h3>
+
+  <aside class="panel hold-panel tappable" id="holdPanel">
+    <h3>HOLD</h3>
+    <canvas id="hold"></canvas>
+    <div class="hold-hint">轻点暂存</div>
+  </aside>
+
+  <aside class="panel stats-panel">
+    <h3>STATS</h3>
+    <div class="stat-row">
       <div class="stat"><span>SCORE</span><span id="sScore">0</span></div>
       <div class="stat"><span>LINES</span><span id="sLines">0</span></div>
-      <div class="stat"><span>LEVEL</span><span id="sLevel">1</span></div>
+      <div class="stat"><span>LV</span><span id="sLevel">1</span></div>
     </div>
-  </div>
+  </aside>
 
   <div class="wrap-col">
     <div class="board-wrap">
@@ -116,28 +192,31 @@
       <div class="overlay show" id="overlay">
         <div class="overlay-card">
           <h2 id="ovTitle">TETRIS</h2>
-          <p id="ovText">← → 移动　↑ / X 旋转<br>Z 逆旋转　空格 硬降　C 暂存　P 暂停</p>
+          <p id="ovText"></p>
           <button id="ovBtn">开始</button>
         </div>
       </div>
     </div>
+
     <div class="pad" id="pad">
-      <button data-act="left">◀</button>
-      <button data-act="ccw">↺</button>
-      <button data-act="cw">↻</button>
-      <button data-act="down">▼</button>
-      <button data-act="hold">H</button>
-      <button data-act="drop">⤓</button>
-      <button data-act="right">▶</button>
+      <div class="cluster move">
+        <button data-act="left" aria-label="左移">◀</button>
+        <button data-act="right" aria-label="右移">▶</button>
+        <button data-act="down" class="span2 down" aria-label="软降">▼<span class="lbl">软降</span></button>
+      </div>
+      <div class="cluster act">
+        <button data-act="ccw" class="rot" aria-label="逆时针旋转">↺</button>
+        <button data-act="cw"  class="rot" aria-label="顺时针旋转">↻</button>
+        <button data-act="drop" class="span2 drop" aria-label="硬降">⤓ 硬降</button>
+      </div>
     </div>
   </div>
 
-  <div class="col right">
-    <div class="panel">
-      <h3>NEXT</h3>
-      <canvas id="next"></canvas>
-    </div>
-  </div>
+  <aside class="panel next-panel">
+    <h3>NEXT</h3>
+    <canvas id="next"></canvas>
+  </aside>
+
 </div>
 
 <script>
@@ -181,7 +260,6 @@ for (const k in SHAPES){
   PIECES[k] = { states, color: COLORS[k] };
 }
 
-/* SRS 踢墙表（y 轴向上，使用时取反） */
 const KICKS_JLSTZ = {
   '0>1':[[0,0],[-1,0],[-1, 1],[0,-2],[-1,-2]],
   '1>0':[[0,0],[ 1,0],[ 1,-1],[0, 2],[ 1, 2]],
@@ -203,12 +281,12 @@ const KICKS_I = {
   '0>3':[[0,0],[-1,0],[ 2,0],[-1, 2],[ 2,-1]]
 };
 
-const GRAVITY_BASE = 1000;   // 1 级下落间隔 ms
-const SOFT_DROP_MS  = 40;    // 软降步进
-const LOCK_DELAY_MS = 500;   // 锁定延迟
+const GRAVITY_BASE   = 1000;
+const SOFT_DROP_MS   = 40;
+const LOCK_DELAY_MS  = 500;
 const MAX_LOCK_RESET = 15;
-const DAS_MS = 150;          // 首次自动重复延迟
-const ARR_MS = 40;           // 自动重复间隔
+const DAS_MS         = 150;
+const ARR_MS         = 40;
 
 /* ------------------------------------------------------------------ *
  * 画布
@@ -217,7 +295,7 @@ const boardCanvas = document.getElementById('board');
 const holdCanvas  = document.getElementById('hold');
 const nextCanvas  = document.getElementById('next');
 
-let ctx = null;
+let ctx = null, holdCtx = null, nextCtx = null;
 let CELL = 30;
 
 function setupCanvas(canvas, cssW, cssH){
@@ -231,21 +309,9 @@ function setupCanvas(canvas, cssW, cssH){
   return g;
 }
 
-let holdCtx = null, nextCtx = null;
-let HOLD_W = 96, HOLD_H = 96, NEXT_W = 96, NEXT_H = 320, NEXT_SLOT = 64;
-
-function initSideCanvases(){
-  const narrow = window.innerWidth < 760;
-  if (narrow){
-    HOLD_W = 64; HOLD_H = 64;
-    NEXT_W = 64; NEXT_H = 220; NEXT_SLOT = 44;
-  } else {
-    HOLD_W = 96; HOLD_H = 96;
-    NEXT_W = 96; NEXT_H = 320; NEXT_SLOT = 64;
-  }
-  holdCtx = setupCanvas(holdCanvas, HOLD_W, HOLD_H);
-  nextCtx = setupCanvas(nextCanvas, NEXT_W, NEXT_H);
-}
+let HOLD_W = 96, HOLD_H = 96;
+let NEXT_W = 96, NEXT_H = 320, NEXT_SLOT = 64;
+let NEXT_HORIZONTAL = false;
 
 /* ------------------------------------------------------------------ *
  * 状态
@@ -362,7 +428,7 @@ function rotate(dir){
   const kicks = table[from + '>' + to] || [[0, 0]];
   for (let i = 0; i < kicks.length; i++){
     const dx = kicks[i][0], dy = kicks[i][1];
-    const nx = c.x + dx, ny = c.y - dy;   // SRS y 轴向上 -> 屏幕向下
+    const nx = c.x + dx, ny = c.y - dy;
     if (!collide(state.board, shape, nx, ny)){
       c.x = nx; c.y = ny; c.rot = to; c.shape = shape;
       onMove();
@@ -452,9 +518,7 @@ function lockPiece(){
 function spawnPiece(type){
   const p = makePiece(type);
   state.cur = p;
-  if (collide(state.board, p.shape, p.x, p.y)){
-    gameOver();
-  }
+  if (collide(state.board, p.shape, p.x, p.y)) gameOver();
 }
 
 function nextPiece(){
@@ -505,9 +569,7 @@ function updateSoftDrop(dt){
       state.dropTimer = 0;
       state.lockResets = 0;
       updateHUD();
-    } else {
-      break;
-    }
+    } else break;
   }
 }
 
@@ -664,9 +726,17 @@ function renderNext(){
   nextCtx.clearRect(0, 0, NEXT_W, NEXT_H);
   nextCtx.fillStyle = '#080d16';
   nextCtx.fillRect(0, 0, NEXT_W, NEXT_H);
-  const n = Math.min(state.queue.length, Math.floor(NEXT_H / NEXT_SLOT));
-  for (let i = 0; i < n; i++){
-    drawMini(nextCtx, state.queue[i], 0, i * NEXT_SLOT, NEXT_W, NEXT_SLOT, NEXT_SLOT / 4.2);
+
+  if (NEXT_HORIZONTAL){
+    const n = Math.min(state.queue.length, Math.floor(NEXT_W / NEXT_SLOT));
+    for (let i = 0; i < n; i++){
+      drawMini(nextCtx, state.queue[i], i * NEXT_SLOT, 0, NEXT_SLOT, NEXT_H, NEXT_SLOT / 4.6);
+    }
+  } else {
+    const n = Math.min(state.queue.length, Math.floor(NEXT_H / NEXT_SLOT));
+    for (let i = 0; i < n; i++){
+      drawMini(nextCtx, state.queue[i], 0, i * NEXT_SLOT, NEXT_W, NEXT_SLOT, NEXT_SLOT / 4.2);
+    }
   }
 }
 
@@ -687,6 +757,15 @@ function updateHUD(){
   sScore.textContent = state.score;
   sLines.textContent = state.lines;
   sLevel.textContent = state.level;
+}
+
+const HELP_TOUCH =
+  '◀ ▶ 移动　▼ 软降<br>↺ ↻ 旋转　⤓ 硬降<br>轻点 HOLD 面板暂存';
+const HELP_KEY =
+  '← → 移动　↑ / X 旋转　Z 逆旋转<br>空格 硬降　C 暂存　P 暂停　R 重开';
+
+function helpText(){
+  return (window.innerWidth < 760) ? HELP_TOUCH : HELP_KEY;
 }
 
 function showOverlay(mode, title, text, btn){
@@ -762,7 +841,7 @@ ovBtn.addEventListener('click', function(){
 });
 
 /* ------------------------------------------------------------------ *
- * 输入
+ * 键盘
  * ------------------------------------------------------------------ */
 const BLOCK_KEYS = ['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' ','Spacebar'];
 
@@ -792,9 +871,7 @@ window.addEventListener('keydown', function(e){
   }
 }, {passive:false});
 
-window.addEventListener('keyup', function(e){
-  keys.delete(e.key);
-});
+window.addEventListener('keyup', function(e){ keys.delete(e.key); });
 
 window.addEventListener('blur', function(){
   keys.clear();
@@ -806,40 +883,86 @@ document.addEventListener('visibilitychange', function(){
   if (document.hidden && state.running && !state.paused && !state.over) togglePause();
 });
 
-/* 触屏控制 */
+/* ------------------------------------------------------------------ *
+ * 触控
+ * ------------------------------------------------------------------ */
 const pad = document.getElementById('pad');
-function bindPad(btn, onDown, onUp){
-  btn.addEventListener('pointerdown', function(e){
+const holdPanel = document.getElementById('holdPanel');
+
+pad.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+holdPanel.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+function activeGame(){ return state.running && !state.paused && !state.over; }
+
+/* 按住型按钮：按下触发，抬起释放 */
+function bindHold(btn, onDown, onUp){
+  let held = false;
+
+  function press(e){
     e.preventDefault();
+    if (held) return;
+    held = true;
+    btn.classList.add('on');
     if (onDown) onDown();
-  });
-  if (onUp){
-    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
-      btn.addEventListener(ev, function(e){ e.preventDefault(); onUp(); });
-    });
   }
+  function release(e){
+    if (!held) return;
+    held = false;
+    btn.classList.remove('on');
+    if (onUp) onUp();
+  }
+
+  btn.addEventListener('pointerdown', press);
+  btn.addEventListener('pointerup', release);
+  btn.addEventListener('pointercancel', release);
+  btn.addEventListener('pointerleave', release);
 }
+
+/* 点按型按钮：只有按下瞬间触发 */
+function bindTap(btn, fn){
+  bindHold(btn, fn, null);
+}
+
 Array.prototype.forEach.call(pad.querySelectorAll('button'), function(btn){
   const act = btn.getAttribute('data-act');
-  const active = function(){ return state.running && !state.paused && !state.over; };
   switch (act){
     case 'left':
-      bindPad(btn, function(){ if (active()) keys.add('ArrowLeft'); },
-                   function(){ keys.delete('ArrowLeft'); });
+      bindHold(btn,
+        function(){ if (activeGame()) keys.add('ArrowLeft'); },
+        function(){ keys.delete('ArrowLeft'); });
       break;
     case 'right':
-      bindPad(btn, function(){ if (active()) keys.add('ArrowRight'); },
-                   function(){ keys.delete('ArrowRight'); });
+      bindHold(btn,
+        function(){ if (activeGame()) keys.add('ArrowRight'); },
+        function(){ keys.delete('ArrowRight'); });
       break;
     case 'down':
-      bindPad(btn, function(){ if (active()) keys.add('ArrowDown'); },
-                   function(){ keys.delete('ArrowDown'); });
+      bindHold(btn,
+        function(){ if (activeGame()) keys.add('ArrowDown'); },
+        function(){ keys.delete('ArrowDown'); });
       break;
-    case 'cw':   bindPad(btn, function(){ if (active()) rotate(1); }); break;
-    case 'ccw':  bindPad(btn, function(){ if (active()) rotate(-1); }); break;
-    case 'drop': bindPad(btn, function(){ if (active()) hardDrop(); }); break;
-    case 'hold': bindPad(btn, function(){ if (active()) holdPiece(); }); break;
+    case 'cw':   bindTap(btn, function(){ if (activeGame()) rotate(1); }); break;
+    case 'ccw':  bindTap(btn, function(){ if (activeGame()) rotate(-1); }); break;
+    case 'drop': bindTap(btn, function(){ if (activeGame()) hardDrop(); }); break;
   }
+});
+
+/* HOLD 面板本体可点 */
+bindTap(holdPanel, function(){ if (activeGame()) holdPiece(); });
+
+/* 触摸抬起兜底：清掉所有方向键 */
+['pointerup','pointercancel','touchcancel'].forEach(function(ev){
+  window.addEventListener(ev, function(){
+    let anyHeld = false;
+    Array.prototype.forEach.call(pad.querySelectorAll('button'), function(b){
+      if (b.classList.contains('on')) anyHeld = true;
+    });
+    if (!anyHeld){
+      keys.delete('ArrowLeft');
+      keys.delete('ArrowRight');
+      keys.delete('ArrowDown');
+    }
+  });
 });
 
 /* ------------------------------------------------------------------ *
@@ -847,30 +970,49 @@ Array.prototype.forEach.call(pad.querySelectorAll('button'), function(btn){
  * ------------------------------------------------------------------ */
 function resize(){
   const wide = window.innerWidth >= 760;
-  const availW = wide ? (window.innerWidth - 380) : (window.innerWidth - 28);
-  const availH = wide ? (window.innerHeight - 70)  : (window.innerHeight - 300);
+
+  if (wide){
+    HOLD_W = 96; HOLD_H = 96;
+    NEXT_W = 96; NEXT_H = 320; NEXT_SLOT = 64;
+    NEXT_HORIZONTAL = false;
+  } else {
+    HOLD_W = 62; HOLD_H = 62;
+    NEXT_W = 150; NEXT_H = 54; NEXT_SLOT = 50;
+    NEXT_HORIZONTAL = true;
+  }
+
+  const PAD_H   = 154;   // 两行按钮 + 间距
+  const MARGIN  = wide ? 60 : 30;
+  const STRIP_H = wide ? 0 : 96;    // hold / next 行
+  const STATS_H = wide ? 0 : 42;
+
+  const availW = wide
+    ? window.innerWidth - 96 * 2 - 60
+    : window.innerWidth - 20;
+
+  const availH = window.innerHeight - MARGIN - (wide ? 0 : PAD_H + STRIP_H + STATS_H);
 
   CELL = Math.floor(Math.min(availH / ROWS, availW / COLS, 34));
-  if (CELL < 12) CELL = 12;
+  if (CELL < 10) CELL = 10;
 
   ctx = setupCanvas(boardCanvas, COLS * CELL, ROWS * CELL);
-  initSideCanvases();
+  holdCtx = setupCanvas(holdCanvas, HOLD_W, HOLD_H);
+  nextCtx = setupCanvas(nextCanvas, NEXT_W, NEXT_H);
+
   renderHold();
   renderNext();
   render();
 }
 
 window.addEventListener('resize', resize);
-window.addEventListener('orientationchange', function(){ setTimeout(resize, 120); });
+window.addEventListener('orientationchange', function(){ setTimeout(resize, 150); });
 
 /* ------------------------------------------------------------------ *
  * 启动
  * ------------------------------------------------------------------ */
 resize();
 updateHUD();
-showOverlay('start', 'TETRIS',
-  '← → 移动　↑ / X 旋转　Z 逆旋转<br>空格 硬降　C 暂存　P 暂停　R 重开',
-  '开始');
+showOverlay('start', 'TETRIS', helpText(), '开始');
 render();
 requestAnimationFrame(frame);
 
