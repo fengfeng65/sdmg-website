@@ -2,232 +2,878 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<meta name="theme-color" content="#0b0f14">
-<title>贪吃蛇</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070a12">
+<title>Tetris</title>
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;overflow:hidden;background:#0b0f14;color:#e6edf3;
-  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
-  user-select:none;-webkit-user-select:none;touch-action:none}
-#wrap{display:flex;flex-direction:column;height:100%;padding:10px;gap:10px}
-#hud{display:flex;align-items:center;gap:10px;font-size:14px;flex:0 0 auto}
-.card{background:#131c26;border:1px solid #1e2a38;border-radius:10px;padding:6px 12px;line-height:1.3}
-.card b{color:#3ddc84;font-size:18px;font-variant-numeric:tabular-nums}
-.card span{display:block;font-size:11px;color:#7d8da1}
-#hud .sp{flex:1}
-#btnPause,#btnReset{background:#1b2735;border:1px solid #2a3a4d;color:#cbd5e1;
-  border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600}
-#btnReset{background:#3ddc84;border-color:#3ddc84;color:#06210f}
-#stage{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0}
-canvas{display:block;border-radius:16px;background:#0f1620;
-  box-shadow:0 0 0 1px #1e2a38,0 10px 34px rgba(0,0,0,.65)}
-#pad{flex:0 0 auto;display:grid;grid-template-columns:repeat(3,62px);
-  grid-template-rows:repeat(2,62px);gap:8px;justify-content:center;padding-bottom:4px}
-#pad button{background:#16202c;border:1px solid #253347;color:#9fb3c8;
-  border-radius:14px;font-size:20px;line-height:1;transition:background .08s,transform .08s}
-#pad button:active{background:#22384d;color:#3ddc84;transform:scale(.94)}
-#pad .ph{visibility:hidden}
-#over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-  background:rgba(6,10,14,.82);backdrop-filter:blur(3px);z-index:9}
-#over.on{display:flex}
-#box{background:#131c26;border:1px solid #26374a;border-radius:18px;padding:26px 30px;
-  text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.7);min-width:220px}
-#box h2{margin:0 0 6px;font-size:22px;color:#3ddc84}
-#box p{margin:6px 0;color:#8ea3b8;font-size:14px}
-#box button{margin-top:16px;background:#3ddc84;border:0;color:#06210f;font-weight:700;
-  border-radius:12px;padding:12px 28px;font-size:15px}
+  :root{
+    --bg:#070a12;
+    --panel:#0f172a;
+    --line:#1e2a44;
+    --txt:#dbe6ff;
+    --dim:#7d8fb3;
+    --accent:#22d3ee;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:radial-gradient(1200px 700px at 50% -15%, #16233d 0%, #070a12 62%);
+    color:var(--txt);
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:14px;
+    -webkit-user-select:none;user-select:none;
+    overscroll-behavior:none;
+    touch-action:manipulation;
+  }
+  .game{display:flex;gap:14px;align-items:flex-start}
+
+  .col{display:flex;flex-direction:column;gap:10px;width:96px}
+
+  .panel{
+    background:linear-gradient(180deg,#111a2c,#0c1320);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:9px 10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);
+  }
+  .panel h3{
+    margin:0 0 7px;font-size:10px;letter-spacing:.2em;
+    color:var(--dim);font-weight:600;
+  }
+  .stat{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;padding:3px 0}
+  .stat span:first-child{color:var(--dim);font-size:10px;letter-spacing:.1em}
+  .stat span:last-child{font-size:14px;font-weight:700;color:var(--txt);font-variant-numeric:tabular-nums}
+
+  canvas{display:block}
+  #hold,#next{background:#080d16;border-radius:8px}
+  .dim{opacity:.35}
+
+  .board-wrap{position:relative;border-radius:12px;overflow:hidden;
+    box-shadow:0 0 0 1px var(--line),0 18px 50px rgba(0,0,0,.55),0 0 60px rgba(34,211,238,.07)}
+  #board{background:#0a0e17}
+
+  .overlay{
+    position:absolute;inset:0;display:none;
+    align-items:center;justify-content:center;
+    background:rgba(6,10,18,.82);
+    backdrop-filter:blur(3px);
+    text-align:center;padding:16px;
+  }
+  .overlay.show{display:flex}
+  .overlay-card{display:flex;flex-direction:column;gap:12px;align-items:center}
+  .overlay h2{margin:0;font-size:20px;letter-spacing:.16em;color:var(--accent)}
+  .overlay p{margin:0;font-size:12px;color:var(--dim);line-height:1.7}
+  .overlay button{
+    appearance:none;border:1px solid #2a4a63;border-radius:9px;
+    background:linear-gradient(180deg,#12324a,#0d2233);
+    color:#bff3ff;font:inherit;font-size:12px;letter-spacing:.14em;
+    padding:10px 22px;cursor:pointer;touch-action:none;
+  }
+  .overlay button:active{transform:translateY(1px)}
+
+  .pad{display:none;gap:8px;margin-top:12px;width:100%}
+  .pad button{
+    flex:1;appearance:none;border:1px solid var(--line);border-radius:10px;
+    background:linear-gradient(180deg,#141d31,#0d1421);color:var(--txt);
+    font:inherit;font-size:16px;padding:14px 0;cursor:pointer;
+    touch-action:none;-webkit-tap-highlight-color:transparent;
+  }
+  .pad button:active{background:#1c2942}
+
+  @media (max-width:760px){
+    body{align-items:flex-start;padding:10px}
+    .game{flex-direction:column;align-items:center}
+    .col{flex-direction:row;width:auto;gap:10px;align-items:stretch}
+    .col .panel{flex:1;min-width:0}
+    #next{width:64px;height:220px}
+    #hold{width:64px;height:64px}
+    .pad{display:flex}
+    .wrap-col{display:flex;flex-direction:column;align-items:center}
+  }
 </style>
 </head>
 <body>
-<div id="wrap">
-  <div id="hud">
-    <div class="card"><span>得分</span><b id="sc">0</b></div>
-    <div class="card"><span>最高</span><b id="bs">0</b></div>
-    <div class="sp"></div>
-    <button id="btnPause">暂停</button>
-    <button id="btnReset">重开</button>
+
+<div class="game">
+  <div class="col left">
+    <div class="panel">
+      <h3>HOLD</h3>
+      <canvas id="hold"></canvas>
+    </div>
+    <div class="panel" style="flex:1">
+      <h3>STATS</h3>
+      <div class="stat"><span>SCORE</span><span id="sScore">0</span></div>
+      <div class="stat"><span>LINES</span><span id="sLines">0</span></div>
+      <div class="stat"><span>LEVEL</span><span id="sLevel">1</span></div>
+    </div>
   </div>
-  <div id="stage"><canvas id="cv"></canvas></div>
-  <div id="pad">
-    <button class="ph"></button><button data-d="U">▲</button><button class="ph"></button>
-    <button data-d="L">◀</button><button data-d="D">▼</button><button data-d="R">▶</button>
+
+  <div class="wrap-col">
+    <div class="board-wrap">
+      <canvas id="board"></canvas>
+      <div class="overlay show" id="overlay">
+        <div class="overlay-card">
+          <h2 id="ovTitle">TETRIS</h2>
+          <p id="ovText">← → 移动　↑ / X 旋转<br>Z 逆旋转　空格 硬降　C 暂存　P 暂停</p>
+          <button id="ovBtn">开始</button>
+        </div>
+      </div>
+    </div>
+    <div class="pad" id="pad">
+      <button data-act="left">◀</button>
+      <button data-act="ccw">↺</button>
+      <button data-act="cw">↻</button>
+      <button data-act="down">▼</button>
+      <button data-act="hold">H</button>
+      <button data-act="drop">⤓</button>
+      <button data-act="right">▶</button>
+    </div>
+  </div>
+
+  <div class="col right">
+    <div class="panel">
+      <h3>NEXT</h3>
+      <canvas id="next"></canvas>
+    </div>
   </div>
 </div>
-<div id="over"><div id="box">
-  <h2 id="ovTitle">游戏结束</h2>
-  <p id="ovSub">得分 0</p>
-  <button id="ovBtn">再来一局</button>
-</div></div>
+
 <script>
 (function(){
 'use strict';
-var cv=document.getElementById('cv'), ctx=cv.getContext('2d');
-var scEl=document.getElementById('sc'), bsEl=document.getElementById('bs');
-var over=document.getElementById('over'), ovTitle=document.getElementById('ovTitle'),
-    ovSub=document.getElementById('ovSub'), ovBtn=document.getElementById('ovBtn');
-var COLS=17, ROWS=17, CELL=20;
-var snake, dir, pend, food, score=0, best=0, alive=true, paused=false;
-var acc=0, last=0, stepMs=150, tick=0;
 
-try{ best=parseInt(localStorage.getItem('snake_best')||'0',10)||0; }catch(e){ best=0; }
-bsEl.textContent=best;
+/* ------------------------------------------------------------------ *
+ * 常量与形状
+ * ------------------------------------------------------------------ */
+const COLS = 10;
+const ROWS = 20;
 
-function fit(){
-  var stage=document.getElementById('stage');
-  var w=stage.clientWidth, h=stage.clientHeight;
-  var size=Math.min(w,h);
-  CELL=Math.max(10,Math.floor(size/COLS));
-  var px=CELL*COLS;
-  cv.width=px; cv.height=px;
-  cv.style.width=px+'px'; cv.style.height=px+'px';
+const COLORS = {
+  I:'#22d3ee', J:'#3b82f6', L:'#f97316', O:'#facc15',
+  S:'#22c55e', T:'#a855f7', Z:'#ef4444'
+};
+
+const SHAPES = {
+  I:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+  J:[[1,0,0],[1,1,1],[0,0,0]],
+  L:[[0,0,1],[1,1,1],[0,0,0]],
+  O:[[1,1],[1,1]],
+  S:[[0,1,1],[1,1,0],[0,0,0]],
+  T:[[0,1,0],[1,1,1],[0,0,0]],
+  Z:[[1,1,0],[0,1,1],[0,0,0]]
+};
+
+function rotateCW(m){
+  const n = m.length;
+  const r = Array.from({length:n}, () => new Array(n).fill(0));
+  for (let y = 0; y < n; y++)
+    for (let x = 0; x < n; x++)
+      r[x][n - 1 - y] = m[y][x];
+  return r;
 }
-function reset(){
-  var c=Math.floor(COLS/2), r=Math.floor(ROWS/2);
-  snake=[{x:c,y:r},{x:c-1,y:r},{x:c-2,y:r}];
-  dir={x:1,y:0}; pend=null; score=0; acc=0; alive=true; paused=false;
-  stepMs=150; tick=0;
-  scEl.textContent='0';
-  document.getElementById('btnPause').textContent='暂停';
-  over.classList.remove('on');
-  placeFood();
+
+const PIECES = {};
+for (const k in SHAPES){
+  const states = [SHAPES[k]];
+  for (let i = 1; i < 4; i++) states.push(rotateCW(states[i - 1]));
+  PIECES[k] = { states, color: COLORS[k] };
 }
-function placeFood(){
-  var free=[];
-  for(var y=0;y<ROWS;y++)for(var x=0;x<COLS;x++){
-    var hit=false;
-    for(var i=0;i<snake.length;i++) if(snake[i].x===x&&snake[i].y===y){hit=true;break;}
-    if(!hit) free.push({x:x,y:y});
+
+/* SRS 踢墙表（y 轴向上，使用时取反） */
+const KICKS_JLSTZ = {
+  '0>1':[[0,0],[-1,0],[-1, 1],[0,-2],[-1,-2]],
+  '1>0':[[0,0],[ 1,0],[ 1,-1],[0, 2],[ 1, 2]],
+  '1>2':[[0,0],[ 1,0],[ 1,-1],[0, 2],[ 1, 2]],
+  '2>1':[[0,0],[-1,0],[-1, 1],[0,-2],[-1,-2]],
+  '2>3':[[0,0],[ 1,0],[ 1, 1],[0,-2],[ 1,-2]],
+  '3>2':[[0,0],[-1,0],[-1,-1],[0, 2],[-1, 2]],
+  '3>0':[[0,0],[-1,0],[-1,-1],[0, 2],[-1, 2]],
+  '0>3':[[0,0],[ 1,0],[ 1, 1],[0,-2],[ 1,-2]]
+};
+const KICKS_I = {
+  '0>1':[[0,0],[-2,0],[ 1,0],[-2,-1],[ 1, 2]],
+  '1>0':[[0,0],[ 2,0],[-1,0],[ 2, 1],[-1,-2]],
+  '1>2':[[0,0],[-1,0],[ 2,0],[-1, 2],[ 2,-1]],
+  '2>1':[[0,0],[ 1,0],[-2,0],[ 1,-2],[-2, 1]],
+  '2>3':[[0,0],[ 2,0],[-1,0],[ 2, 1],[-1,-2]],
+  '3>2':[[0,0],[-2,0],[ 1,0],[-2,-1],[ 1, 2]],
+  '3>0':[[0,0],[ 1,0],[-2,0],[ 1,-2],[-2, 1]],
+  '0>3':[[0,0],[-1,0],[ 2,0],[-1, 2],[ 2,-1]]
+};
+
+const GRAVITY_BASE = 1000;   // 1 级下落间隔 ms
+const SOFT_DROP_MS  = 40;    // 软降步进
+const LOCK_DELAY_MS = 500;   // 锁定延迟
+const MAX_LOCK_RESET = 15;
+const DAS_MS = 150;          // 首次自动重复延迟
+const ARR_MS = 40;           // 自动重复间隔
+
+/* ------------------------------------------------------------------ *
+ * 画布
+ * ------------------------------------------------------------------ */
+const boardCanvas = document.getElementById('board');
+const holdCanvas  = document.getElementById('hold');
+const nextCanvas  = document.getElementById('next');
+
+let ctx = null;
+let CELL = 30;
+
+function setupCanvas(canvas, cssW, cssH){
+  const dpr = Math.min(window.devicePixelRatio || 1, 3);
+  canvas.width  = Math.round(cssW * dpr);
+  canvas.height = Math.round(cssH * dpr);
+  canvas.style.width  = cssW + 'px';
+  canvas.style.height = cssH + 'px';
+  const g = canvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return g;
+}
+
+let holdCtx = null, nextCtx = null;
+let HOLD_W = 96, HOLD_H = 96, NEXT_W = 96, NEXT_H = 320, NEXT_SLOT = 64;
+
+function initSideCanvases(){
+  const narrow = window.innerWidth < 760;
+  if (narrow){
+    HOLD_W = 64; HOLD_H = 64;
+    NEXT_W = 64; NEXT_H = 220; NEXT_SLOT = 44;
+  } else {
+    HOLD_W = 96; HOLD_H = 96;
+    NEXT_W = 96; NEXT_H = 320; NEXT_SLOT = 64;
   }
-  food = free.length? free[Math.floor(Math.random()*free.length)] : null;
+  holdCtx = setupCanvas(holdCanvas, HOLD_W, HOLD_H);
+  nextCtx = setupCanvas(nextCanvas, NEXT_W, NEXT_H);
 }
-function turn(d){
-  var v={U:{x:0,y:-1},D:{x:0,y:1},L:{x:-1,y:0},R:{x:1,y:0}}[d];
-  if(!v) return;
-  var base = pend||dir;
-  if(v.x===-base.x && v.y===-base.y) return;   // 不能180度掉头
-  pend=v;
+
+/* ------------------------------------------------------------------ *
+ * 状态
+ * ------------------------------------------------------------------ */
+const state = {
+  board: Array.from({length:ROWS}, () => new Array(COLS).fill(null)),
+  cur: null,
+  hold: null,
+  canHold: true,
+  bag: [],
+  queue: [],
+  score: 0,
+  lines: 0,
+  level: 1,
+  dropTimer: 0,
+  lockTimer: 0,
+  lockResets: 0,
+  running: false,
+  paused: false,
+  over: false
+};
+
+const keys = new Set();
+let dasDir = 0, dasTimer = 0, arrTimer = 0;
+let softTimer = 0;
+
+/* ------------------------------------------------------------------ *
+ * 核心逻辑
+ * ------------------------------------------------------------------ */
+function collide(board, shape, px, py){
+  for (let y = 0; y < shape.length; y++){
+    for (let x = 0; x < shape[y].length; x++){
+      if (!shape[y][x]) continue;
+      const bx = px + x, by = py + y;
+      if (bx < 0 || bx >= COLS || by >= ROWS) return true;
+      if (by >= 0 && board[by][bx]) return true;
+    }
+  }
+  return false;
 }
+
+function makePiece(type){
+  const shape = PIECES[type].states[0];
+  let top = 0;
+  for (let y = 0; y < shape.length; y++){
+    if (shape[y].some(v => v)) { top = y; break; }
+  }
+  const x = Math.floor((COLS - shape.length) / 2);
+  return { type, rot: 0, x, y: -top, shape };
+}
+
+function nextFromBag(){
+  if (state.bag.length === 0){
+    state.bag = ['I','J','L','O','S','T','Z'];
+    for (let i = state.bag.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      const t = state.bag[i]; state.bag[i] = state.bag[j]; state.bag[j] = t;
+    }
+  }
+  return state.bag.pop();
+}
+
+function refillQueue(){
+  while (state.queue.length < 5) state.queue.push(nextFromBag());
+}
+
+function gravityMs(){
+  const l = Math.min(state.level, 20);
+  return Math.max(16, GRAVITY_BASE * Math.pow(0.8 - (l - 1) * 0.007, l - 1));
+}
+
 function step(){
-  if(pend){ dir=pend; pend=null; }
-  var head={x:snake[0].x+dir.x, y:snake[0].y+dir.y};
-  if(head.x<0||head.y<0||head.x>=COLS||head.y>=ROWS){ return die(); }
-  for(var i=0;i<snake.length-1;i++)
-    if(snake[i].x===head.x&&snake[i].y===head.y) return die();
-  snake.unshift(head);
-  if(food && head.x===food.x && head.y===food.y){
-    score+=10; scEl.textContent=score;
-    if(score>best){ best=score; bsEl.textContent=best;
-      try{ localStorage.setItem('snake_best',String(best)); }catch(e){} }
-    if(stepMs>70) stepMs-=3;
-    placeFood();
-  } else snake.pop();
+  const c = state.cur;
+  if (!c) return false;
+  if (!collide(state.board, c.shape, c.x, c.y + 1)){
+    c.y++;
+    state.lockResets = 0;
+    return true;
+  }
+  return false;
 }
-function die(){
-  alive=false;
-  ovTitle.textContent='游戏结束';
-  ovSub.textContent='本局得分 '+score+'　最高 '+best;
-  over.classList.add('on');
+
+function onMove(){
+  const c = state.cur;
+  if (!c) return;
+  if (collide(state.board, c.shape, c.x, c.y + 1)){
+    if (state.lockResets < MAX_LOCK_RESET){
+      state.lockResets++;
+      state.lockTimer = 0;
+    }
+  } else {
+    state.lockTimer = 0;
+  }
 }
-function rr(x,y,w,h,r){
+
+function move(dx){
+  const c = state.cur;
+  if (!c) return false;
+  if (!collide(state.board, c.shape, c.x + dx, c.y)){
+    c.x += dx;
+    onMove();
+    return true;
+  }
+  return false;
+}
+
+function rotate(dir){
+  const c = state.cur;
+  if (!c || c.type === 'O') return;
+  const from = c.rot;
+  const to = (from + (dir > 0 ? 1 : 3)) % 4;
+  const shape = PIECES[c.type].states[to];
+  const table = (c.type === 'I') ? KICKS_I : KICKS_JLSTZ;
+  const kicks = table[from + '>' + to] || [[0, 0]];
+  for (let i = 0; i < kicks.length; i++){
+    const dx = kicks[i][0], dy = kicks[i][1];
+    const nx = c.x + dx, ny = c.y - dy;   // SRS y 轴向上 -> 屏幕向下
+    if (!collide(state.board, shape, nx, ny)){
+      c.x = nx; c.y = ny; c.rot = to; c.shape = shape;
+      onMove();
+      return;
+    }
+  }
+}
+
+function ghostY(){
+  const c = state.cur;
+  if (!c) return 0;
+  let gy = c.y;
+  while (!collide(state.board, c.shape, c.x, gy + 1)) gy++;
+  return gy;
+}
+
+function hardDrop(){
+  const c = state.cur;
+  if (!c) return;
+  let d = 0;
+  while (!collide(state.board, c.shape, c.x, c.y + 1)){ c.y++; d++; }
+  if (d) state.score += 2 * d;
+  lockPiece();
+}
+
+function holdPiece(){
+  const c = state.cur;
+  if (!c || !state.canHold) return;
+  const t = c.type;
+  if (state.hold){
+    const h = state.hold;
+    state.hold = t;
+    spawnPiece(h);
+  } else {
+    state.hold = t;
+    nextPiece();
+  }
+  state.canHold = false;
+  state.dropTimer = 0;
+  state.lockTimer = 0;
+  state.lockResets = 0;
+  renderHold();
+}
+
+function clearLines(){
+  let cleared = 0;
+  for (let y = ROWS - 1; y >= 0; y--){
+    if (state.board[y].every(v => v)){
+      state.board.splice(y, 1);
+      state.board.unshift(new Array(COLS).fill(null));
+      cleared++;
+      y++;
+    }
+  }
+  if (cleared){
+    const table = {1:100, 2:300, 3:500, 4:800};
+    state.score += (table[cleared] || 0) * state.level;
+    state.lines += cleared;
+    const nl = Math.floor(state.lines / 10) + 1;
+    if (nl !== state.level) state.level = nl;
+    updateHUD();
+  }
+}
+
+function lockPiece(){
+  const c = state.cur;
+  if (!c) return;
+  const shape = c.shape;
+  let visible = false;
+  for (let y = 0; y < shape.length; y++){
+    for (let x = 0; x < shape[y].length; x++){
+      if (!shape[y][x]) continue;
+      const bx = c.x + x, by = c.y + y;
+      if (by >= 0){ state.board[by][bx] = c.type; visible = true; }
+    }
+  }
+  state.cur = null;
+  clearLines();
+  if (!visible){ gameOver(); return; }
+  nextPiece();
+  state.canHold = true;
+  state.dropTimer = 0;
+  state.lockTimer = 0;
+  state.lockResets = 0;
+}
+
+function spawnPiece(type){
+  const p = makePiece(type);
+  state.cur = p;
+  if (collide(state.board, p.shape, p.x, p.y)){
+    gameOver();
+  }
+}
+
+function nextPiece(){
+  const t = state.queue.shift();
+  refillQueue();
+  spawnPiece(t);
+  renderNext();
+}
+
+/* ------------------------------------------------------------------ *
+ * 循环
+ * ------------------------------------------------------------------ */
+function updateDAS(dt){
+  const left  = keys.has('ArrowLeft');
+  const right = keys.has('ArrowRight');
+  const dir = (right ? 1 : 0) - (left ? 1 : 0);
+
+  if (dir === 0){ dasDir = 0; dasTimer = 0; arrTimer = 0; return; }
+
+  if (dir !== dasDir){
+    dasDir = dir; dasTimer = 0; arrTimer = 0;
+    move(dir);
+    return;
+  }
+
+  dasTimer += dt;
+  if (dasTimer >= DAS_MS){
+    arrTimer += dt;
+    let guard = 0;
+    while (arrTimer >= ARR_MS && guard++ < 10){
+      arrTimer -= ARR_MS;
+      if (!move(dir)) break;
+    }
+  }
+}
+
+function updateSoftDrop(dt){
+  if (!keys.has('ArrowDown')){ softTimer = 0; return; }
+  softTimer += dt;
+  let guard = 0;
+  while (softTimer >= SOFT_DROP_MS && guard++ < 20){
+    softTimer -= SOFT_DROP_MS;
+    const c = state.cur;
+    if (!c) break;
+    if (!collide(state.board, c.shape, c.x, c.y + 1)){
+      c.y++;
+      state.score += 1;
+      state.dropTimer = 0;
+      state.lockResets = 0;
+      updateHUD();
+    } else {
+      break;
+    }
+  }
+}
+
+function update(dt){
+  if (!state.running || state.paused || state.over) return;
+
+  updateDAS(dt);
+  updateSoftDrop(dt);
+
+  const c = state.cur;
+  if (!c) return;
+
+  state.dropTimer += dt;
+  if (state.dropTimer >= gravityMs()){
+    state.dropTimer = 0;
+    step();
+  }
+
+  if (collide(state.board, c.shape, c.x, c.y + 1)){
+    state.lockTimer += dt;
+    if (state.lockTimer >= LOCK_DELAY_MS) lockPiece();
+  } else {
+    state.lockTimer = 0;
+  }
+}
+
+let lastTime = performance.now();
+function frame(now){
+  const dt = Math.min(100, now - lastTime);
+  lastTime = now;
+  update(dt);
+  render();
+  requestAnimationFrame(frame);
+}
+
+/* ------------------------------------------------------------------ *
+ * 渲染
+ * ------------------------------------------------------------------ */
+function drawCell(g, px, py, size, color, alpha){
+  g.globalAlpha = (alpha === undefined ? 1 : alpha);
+  g.fillStyle = color;
+  g.fillRect(px + 1, py + 1, size - 2, size - 2);
+
+  g.fillStyle = 'rgba(255,255,255,0.28)';
+  g.fillRect(px + 1, py + 1, size - 2, Math.max(2, size * 0.12));
+
+  g.fillStyle = 'rgba(0,0,0,0.30)';
+  g.fillRect(px + 1, py + size - 1 - Math.max(2, size * 0.12), size - 2, Math.max(2, size * 0.12));
+
+  g.strokeStyle = 'rgba(0,0,0,0.45)';
+  g.lineWidth = 1;
+  g.strokeRect(px + 0.5, py + 0.5, size - 1, size - 1);
+
+  g.globalAlpha = 1;
+}
+
+function drawGhostCell(g, px, py, size, color){
+  g.globalAlpha = 0.30;
+  g.strokeStyle = color;
+  g.lineWidth = 2;
+  g.strokeRect(px + 2, py + 2, size - 4, size - 4);
+  g.globalAlpha = 0.10;
+  g.fillStyle = color;
+  g.fillRect(px + 2, py + 2, size - 4, size - 4);
+  g.globalAlpha = 1;
+}
+
+function render(){
+  if (!ctx) return;
+  const W = COLS * CELL, H = ROWS * CELL;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#0a0e17';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.045)';
+  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
-  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
-}
-function draw(){
-  var px=CELL*COLS;
-  ctx.clearRect(0,0,px,px);
-  // 网格
-  ctx.strokeStyle='rgba(255,255,255,.028)'; ctx.lineWidth=1;
-  for(var i=1;i<COLS;i++){
-    ctx.beginPath(); ctx.moveTo(i*CELL+.5,0); ctx.lineTo(i*CELL+.5,px); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(0,i*CELL+.5); ctx.lineTo(px,i*CELL+.5); ctx.stroke();
+  for (let x = 1; x < COLS; x++){
+    ctx.moveTo(x * CELL + 0.5, 0);
+    ctx.lineTo(x * CELL + 0.5, H);
   }
-  // 食物
-  if(food){
-    var p=1+Math.sin(tick/6)*0.10;
-    var fx=(food.x+.5)*CELL, fy=(food.y+.5)*CELL, fr=CELL*0.32*p;
-    ctx.save();
-    ctx.shadowColor='#ff5a5f'; ctx.shadowBlur=CELL*0.9;
-    ctx.fillStyle='#ff5a5f';
-    ctx.beginPath(); ctx.arc(fx,fy,fr,0,Math.PI*2); ctx.fill();
-    ctx.restore();
+  for (let y = 1; y < ROWS; y++){
+    ctx.moveTo(0, y * CELL + 0.5);
+    ctx.lineTo(W, y * CELL + 0.5);
   }
-  // 蛇
-  var n=snake.length;
-  for(var k=n-1;k>=0;k--){
-    var s=snake[k], t=k/Math.max(1,n-1);
-    ctx.save();
-    if(k===0){ ctx.shadowColor='rgba(61,220,132,.95)'; ctx.shadowBlur=CELL*0.85; }
-    ctx.fillStyle = k===0 ? '#5ef2a0' : 'rgba(61,220,132,'+(0.95-0.5*t)+')';
-    var pad = k===0 ? 1 : 1.5+t*1.2;
-    rr(s.x*CELL+pad, s.y*CELL+pad, CELL-pad*2, CELL-pad*2, CELL*0.28);
-    ctx.fill();
-    ctx.restore();
+  ctx.stroke();
+
+  for (let y = 0; y < ROWS; y++){
+    for (let x = 0; x < COLS; x++){
+      const t = state.board[y][x];
+      if (t) drawCell(ctx, x * CELL, y * CELL, CELL, COLORS[t], 1);
+    }
   }
-  // 眼睛
-  if(alive && snake.length){
-    var h0=snake[0];
-    var cx=(h0.x+.5)*CELL, cy=(h0.y+.5)*CELL, e=CELL*0.11;
-    var ox=dir.y!==0? CELL*0.20:0, oy=dir.x!==0? CELL*0.20:0;
-    ctx.fillStyle='#06210f';
-    ctx.beginPath(); ctx.arc(cx+ox-dir.x*CELL*0.06, cy+oy-dir.y*CELL*0.06, e,0,6.283); ctx.fill();
-    ctx.beginPath(); ctx.arc(cx-ox-dir.x*CELL*0.06, cy-oy-dir.y*CELL*0.06, e,0,6.283); ctx.fill();
+
+  const c = state.cur;
+  if (c){
+    const gy = ghostY();
+    const shape = c.shape;
+    for (let y = 0; y < shape.length; y++){
+      for (let x = 0; x < shape[y].length; x++){
+        if (!shape[y][x]) continue;
+        const by = gy + y;
+        if (by >= 0) drawGhostCell(ctx, (c.x + x) * CELL, by * CELL, CELL, COLORS[c.type]);
+      }
+    }
+    for (let y = 0; y < shape.length; y++){
+      for (let x = 0; x < shape[y].length; x++){
+        if (!shape[y][x]) continue;
+        const by = c.y + y;
+        if (by >= 0) drawCell(ctx, (c.x + x) * CELL, by * CELL, CELL, COLORS[c.type], 1);
+      }
+    }
   }
 }
-function loop(ts){
-  requestAnimationFrame(loop);
-  if(!last) last=ts;
-  var dt=Math.min(120, ts-last); last=ts;
-  if(alive && !paused){ acc+=dt; while(acc>=stepMs){ acc-=stepMs; step(); if(!alive)break; } }
-  tick++; draw();
+
+function drawMini(g, type, bx, by, bw, bh, cell){
+  const shape = PIECES[type].states[0];
+  let minX = 99, maxX = -1, minY = 99, maxY = -1;
+  for (let y = 0; y < shape.length; y++){
+    for (let x = 0; x < shape[y].length; x++){
+      if (!shape[y][x]) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+  const w = (maxX - minX + 1) * cell;
+  const h = (maxY - minY + 1) * cell;
+  const ox = bx + (bw - w) / 2 - minX * cell;
+  const oy = by + (bh - h) / 2 - minY * cell;
+  for (let y = minY; y <= maxY; y++){
+    for (let x = minX; x <= maxX; x++){
+      if (shape[y][x]) drawCell(g, ox + x * cell, oy + y * cell, cell, COLORS[type], 1);
+    }
+  }
 }
-// 触摸滑动
-var sx=0, sy=0, tracking=false;
-function tstart(e){
-  var t=e.touches?e.touches[0]:e; sx=t.clientX; sy=t.clientY; tracking=true;
+
+function renderHold(){
+  if (!holdCtx) return;
+  holdCtx.clearRect(0, 0, HOLD_W, HOLD_H);
+  holdCtx.fillStyle = '#080d16';
+  holdCtx.fillRect(0, 0, HOLD_W, HOLD_H);
+  if (state.hold){
+    holdCtx.globalAlpha = state.canHold ? 1 : 0.35;
+    drawMini(holdCtx, state.hold, 0, 0, HOLD_W, HOLD_H, Math.min(HOLD_W, HOLD_H) / 5);
+    holdCtx.globalAlpha = 1;
+  }
 }
-function tmove(e){
-  if(!tracking) return;
-  var t=e.touches?e.touches[0]:e;
-  var dx=t.clientX-sx, dy=t.clientY-sy;
-  if(Math.abs(dx)<24 && Math.abs(dy)<24) return;
-  if(Math.abs(dx)>Math.abs(dy)) turn(dx>0?'R':'L'); else turn(dy>0?'D':'U');
-  sx=t.clientX; sy=t.clientY;
-  if(e.cancelable) e.preventDefault();
+
+function renderNext(){
+  if (!nextCtx) return;
+  nextCtx.clearRect(0, 0, NEXT_W, NEXT_H);
+  nextCtx.fillStyle = '#080d16';
+  nextCtx.fillRect(0, 0, NEXT_W, NEXT_H);
+  const n = Math.min(state.queue.length, Math.floor(NEXT_H / NEXT_SLOT));
+  for (let i = 0; i < n; i++){
+    drawMini(nextCtx, state.queue[i], 0, i * NEXT_SLOT, NEXT_W, NEXT_SLOT, NEXT_SLOT / 4.2);
+  }
 }
-function tend(){ tracking=false; }
-var wrap=document.getElementById('wrap');
-wrap.addEventListener('touchstart',tstart,{passive:true});
-wrap.addEventListener('touchmove',tmove,{passive:false});
-wrap.addEventListener('touchend',tend,{passive:true});
-wrap.addEventListener('mousedown',tstart);
-wrap.addEventListener('mousemove',function(e){ if(tracking) tmove(e); });
-wrap.addEventListener('mouseup',tend);
-// 方向键
-document.getElementById('pad').addEventListener('click',function(e){
-  var b=e.target.closest('button[data-d]'); if(b) turn(b.dataset.d);
-});
-document.addEventListener('keydown',function(e){
-  var m={ArrowUp:'U',ArrowDown:'D',ArrowLeft:'L',ArrowRight:'R',
-         w:'U',s:'D',a:'L',d:'R',W:'U',S:'D',A:'L',D:'R'}[e.key];
-  if(m){ turn(m); e.preventDefault(); }
-  if(e.key===' '){ togglePause(); e.preventDefault(); }
-});
+
+/* ------------------------------------------------------------------ *
+ * HUD / 覆盖层
+ * ------------------------------------------------------------------ */
+const sScore = document.getElementById('sScore');
+const sLines = document.getElementById('sLines');
+const sLevel = document.getElementById('sLevel');
+const overlay = document.getElementById('overlay');
+const ovTitle = document.getElementById('ovTitle');
+const ovText  = document.getElementById('ovText');
+const ovBtn   = document.getElementById('ovBtn');
+
+let overlayMode = 'start';
+
+function updateHUD(){
+  sScore.textContent = state.score;
+  sLines.textContent = state.lines;
+  sLevel.textContent = state.level;
+}
+
+function showOverlay(mode, title, text, btn){
+  overlayMode = mode;
+  ovTitle.textContent = title;
+  ovText.innerHTML = text;
+  ovBtn.textContent = btn;
+  overlay.classList.add('show');
+}
+
+function hideOverlay(){
+  overlay.classList.remove('show');
+}
+
+/* ------------------------------------------------------------------ *
+ * 生命周期
+ * ------------------------------------------------------------------ */
+function startGame(){
+  state.board = Array.from({length:ROWS}, () => new Array(COLS).fill(null));
+  state.cur = null;
+  state.hold = null;
+  state.canHold = true;
+  state.bag = [];
+  state.queue = [];
+  state.score = 0;
+  state.lines = 0;
+  state.level = 1;
+  state.dropTimer = 0;
+  state.lockTimer = 0;
+  state.lockResets = 0;
+  state.paused = false;
+  state.over = false;
+  state.running = true;
+
+  keys.clear();
+  dasDir = 0; dasTimer = 0; arrTimer = 0; softTimer = 0;
+
+  refillQueue();
+  nextPiece();
+  updateHUD();
+  renderHold();
+  renderNext();
+  hideOverlay();
+  lastTime = performance.now();
+}
+
+function gameOver(){
+  state.over = true;
+  state.running = false;
+  state.cur = null;
+  keys.clear();
+  showOverlay('over', 'GAME OVER',
+    '得分 ' + state.score + '　消行 ' + state.lines + '　等级 ' + state.level,
+    '重新开始');
+}
+
 function togglePause(){
-  if(!alive) return;
-  paused=!paused;
-  document.getElementById('btnPause').textContent = paused?'继续':'暂停';
+  if (!state.running || state.over) return;
+  state.paused = !state.paused;
+  if (state.paused){
+    keys.clear();
+    dasDir = 0;
+    showOverlay('pause', 'PAUSED', '游戏已暂停', '继续');
+  } else {
+    hideOverlay();
+    lastTime = performance.now();
+  }
 }
-document.getElementById('btnPause').onclick=togglePause;
-document.getElementById('btnReset').onclick=function(){ reset(); };
-ovBtn.onclick=function(){ reset(); };
-window.addEventListener('resize',function(){ fit(); });
-document.addEventListener('visibilitychange',function(){
-  if(document.hidden && alive){ paused=true;
-    document.getElementById('btnPause').textContent='继续'; }
+
+ovBtn.addEventListener('click', function(){
+  if (overlayMode === 'pause') togglePause();
+  else startGame();
 });
-fit(); reset(); requestAnimationFrame(loop);
+
+/* ------------------------------------------------------------------ *
+ * 输入
+ * ------------------------------------------------------------------ */
+const BLOCK_KEYS = ['ArrowLeft','ArrowRight','ArrowDown','ArrowUp',' ','Spacebar'];
+
+window.addEventListener('keydown', function(e){
+  const k = e.key;
+  if (BLOCK_KEYS.indexOf(k) !== -1) e.preventDefault();
+  if (e.repeat) return;
+
+  const active = state.running && !state.paused && !state.over;
+
+  if (k === 'ArrowLeft' || k === 'ArrowRight' || k === 'ArrowDown'){
+    if (active) keys.add(k);
+    return;
+  }
+  if (!active){
+    if (k === 'Enter') startGame();
+    if ((k === 'p' || k === 'P') && state.paused) togglePause();
+    return;
+  }
+  switch (k){
+    case 'ArrowUp': case 'x': case 'X': rotate(1); break;
+    case 'z': case 'Z': case 'Control': rotate(-1); break;
+    case ' ': case 'Spacebar': hardDrop(); break;
+    case 'c': case 'C': case 'Shift': holdPiece(); break;
+    case 'p': case 'P': case 'Escape': togglePause(); break;
+    case 'r': case 'R': startGame(); break;
+  }
+}, {passive:false});
+
+window.addEventListener('keyup', function(e){
+  keys.delete(e.key);
+});
+
+window.addEventListener('blur', function(){
+  keys.clear();
+  dasDir = 0;
+  if (state.running && !state.paused && !state.over) togglePause();
+});
+
+document.addEventListener('visibilitychange', function(){
+  if (document.hidden && state.running && !state.paused && !state.over) togglePause();
+});
+
+/* 触屏控制 */
+const pad = document.getElementById('pad');
+function bindPad(btn, onDown, onUp){
+  btn.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    if (onDown) onDown();
+  });
+  if (onUp){
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
+      btn.addEventListener(ev, function(e){ e.preventDefault(); onUp(); });
+    });
+  }
+}
+Array.prototype.forEach.call(pad.querySelectorAll('button'), function(btn){
+  const act = btn.getAttribute('data-act');
+  const active = function(){ return state.running && !state.paused && !state.over; };
+  switch (act){
+    case 'left':
+      bindPad(btn, function(){ if (active()) keys.add('ArrowLeft'); },
+                   function(){ keys.delete('ArrowLeft'); });
+      break;
+    case 'right':
+      bindPad(btn, function(){ if (active()) keys.add('ArrowRight'); },
+                   function(){ keys.delete('ArrowRight'); });
+      break;
+    case 'down':
+      bindPad(btn, function(){ if (active()) keys.add('ArrowDown'); },
+                   function(){ keys.delete('ArrowDown'); });
+      break;
+    case 'cw':   bindPad(btn, function(){ if (active()) rotate(1); }); break;
+    case 'ccw':  bindPad(btn, function(){ if (active()) rotate(-1); }); break;
+    case 'drop': bindPad(btn, function(){ if (active()) hardDrop(); }); break;
+    case 'hold': bindPad(btn, function(){ if (active()) holdPiece(); }); break;
+  }
+});
+
+/* ------------------------------------------------------------------ *
+ * 尺寸自适应
+ * ------------------------------------------------------------------ */
+function resize(){
+  const wide = window.innerWidth >= 760;
+  const availW = wide ? (window.innerWidth - 380) : (window.innerWidth - 28);
+  const availH = wide ? (window.innerHeight - 70)  : (window.innerHeight - 300);
+
+  CELL = Math.floor(Math.min(availH / ROWS, availW / COLS, 34));
+  if (CELL < 12) CELL = 12;
+
+  ctx = setupCanvas(boardCanvas, COLS * CELL, ROWS * CELL);
+  initSideCanvases();
+  renderHold();
+  renderNext();
+  render();
+}
+
+window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', function(){ setTimeout(resize, 120); });
+
+/* ------------------------------------------------------------------ *
+ * 启动
+ * ------------------------------------------------------------------ */
+resize();
+updateHUD();
+showOverlay('start', 'TETRIS',
+  '← → 移动　↑ / X 旋转　Z 逆旋转<br>空格 硬降　C 暂存　P 暂停　R 重开',
+  '开始');
+render();
+requestAnimationFrame(frame);
+
 })();
 </script>
 </body>
